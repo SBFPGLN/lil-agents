@@ -35,6 +35,9 @@ class WalkerCharacter {
     var walkStartPos: CGFloat = 0.0
     var walkEndPos: CGFloat = 0.0
     var currentTravelDistance: CGFloat = 500.0
+    // Walk endpoints stored in pixels for consistent speed across screen switches
+    var walkStartPixel: CGFloat = 0.0
+    var walkEndPixel: CGFloat = 0.0
 
     // Popover state
     var isIdleForPopover = false
@@ -559,8 +562,6 @@ class WalkerCharacter {
 
         walkStartPos = positionProgress
         // Walk a fixed pixel distance (~200-325px) regardless of screen width.
-        // Convert walkAmountRange (tuned for dock-width ~500px) to pixels using
-        // a reference width, then convert back to a fraction of actual travel distance.
         let referenceWidth: CGFloat = 500.0
         let walkPixels = CGFloat.random(in: walkAmountRange) * referenceWidth
         let walkAmount = currentTravelDistance > 0 ? walkPixels / currentTravelDistance : 0.3
@@ -569,6 +570,9 @@ class WalkerCharacter {
         } else {
             walkEndPos = max(walkStartPos - walkAmount, 0.0)
         }
+        // Store pixel positions so walk speed stays consistent if screen changes mid-walk
+        walkStartPixel = walkStartPos * currentTravelDistance
+        walkEndPixel = walkEndPos * currentTravelDistance
 
         let minSeparation: CGFloat = 0.12
         if let siblings = controller?.characters {
@@ -672,17 +676,23 @@ class WalkerCharacter {
         if isWalking {
             let elapsed = now - walkStartTime
             let videoTime = min(elapsed, videoDuration)
+            let travelDistance = currentTravelDistance
+
+            // Interpolate in pixel space for consistent speed across screen changes
+            let walkNorm = elapsed >= videoDuration ? 1.0 : movementPosition(at: videoTime)
+            let currentPixel = walkStartPixel + (walkEndPixel - walkStartPixel) * walkNorm
+
+            // Convert pixel position back to progress for the current screen
+            if travelDistance > 0 {
+                positionProgress = min(max(currentPixel / travelDistance, 0), 1)
+            }
 
             if elapsed >= videoDuration {
-                positionProgress = walkEndPos
+                walkEndPos = positionProgress
                 enterPause()
                 return
             }
 
-            let walkNorm = movementPosition(at: videoTime)
-            positionProgress = walkStartPos + (walkEndPos - walkStartPos) * walkNorm
-
-            let travelDistance = max(dockWidth - displayWidth, 0)
             let x = dockX + travelDistance * positionProgress + currentFlipCompensation
             let bottomPadding = displayHeight * 0.15
             let y = dockTopY - bottomPadding + yOffset
