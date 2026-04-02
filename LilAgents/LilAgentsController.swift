@@ -178,6 +178,10 @@ class LilAgentsController {
     }
 
     private func shouldShowCharacters(on screen: NSScreen) -> Bool {
+        // User explicitly pinned to this screen — always show
+        if pinnedScreenIndex >= 0, pinnedScreenIndex < NSScreen.screens.count {
+            return true
+        }
         if screenHasDock(screen) {
             return true
         }
