@@ -16,9 +16,14 @@ class LilAgentsController {
         AgentProvider.detectAvailableProviders { [weak char1, weak char2] in
             guard let char1 = char1, let char2 = char2 else { return }
             if !UserDefaults.standard.bool(forKey: Self.onboardingKey) {
-                let first = AgentProvider.firstAvailable
-                char1.provider = first
-                char2.provider = first
+                if OpenClawConfig.isConfigured {
+                    char1.provider = .openclaw
+                    char2.provider = .openclaw
+                } else {
+                    let first = AgentProvider.firstAvailable
+                    char1.provider = first
+                    char2.provider = first
+                }
             }
         }
 

@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Provider
 
 enum AgentProvider: String, CaseIterable {
-    case claude, codex, copilot, gemini, opencode
+    case claude, codex, copilot, gemini, opencode, openclaw
 
     private static let defaultsKey = "selectedProvider"
 
@@ -24,6 +24,7 @@ enum AgentProvider: String, CaseIterable {
         case .copilot:  return "Copilot"
         case .gemini:   return "Gemini"
         case .opencode: return "OpenCode"
+        case .openclaw: return "OpenClaw"
         }
     }
 
@@ -47,6 +48,7 @@ enum AgentProvider: String, CaseIterable {
         case .copilot:  return "copilot"
         case .gemini:   return "gemini"
         case .opencode: return "opencode"
+        case .openclaw: return "openclaw"
         }
     }
 
@@ -58,6 +60,10 @@ enum AgentProvider: String, CaseIterable {
         let all = AgentProvider.allCases
         let group = DispatchGroup()
         for provider in all {
+            if provider == .openclaw {
+                availability[provider] = OpenClawConfig.isConfigured
+                continue
+            }
             group.enter()
             let home = FileManager.default.homeDirectoryForCurrentUser.path
             ShellEnvironment.findBinary(name: provider.binaryName, fallbackPaths: [
@@ -75,7 +81,8 @@ enum AgentProvider: String, CaseIterable {
     }
 
     var isAvailable: Bool {
-        AgentProvider.availability[self] ?? false
+        if self == .openclaw { return OpenClawConfig.isConfigured }
+        return AgentProvider.availability[self] ?? false
     }
 
     /// Returns the first available provider, or `.claude` as fallback.
@@ -95,16 +102,19 @@ enum AgentProvider: String, CaseIterable {
             return "To install, run this in Terminal:\n  npm install -g @google/gemini-cli\n\nThen authenticate:\n  gemini auth"
         case .opencode:
             return "To install, run this in Terminal:\n  curl -fsSL https://opencode.ai/install | bash"
+        case .openclaw:
+            return "Configure the OpenClaw server connection via the provider menu.\nRequires a Tailscale connection and auth token."
         }
     }
 
-    func createSession() -> any AgentSession {
+    func createSession(characterName: String? = nil) -> any AgentSession {
         switch self {
         case .claude:   return ClaudeSession()
         case .codex:    return CodexSession()
         case .copilot:  return CopilotSession()
         case .gemini:   return GeminiSession()
         case .opencode: return OpenCodeSession()
+        case .openclaw: return OpenClawSession(characterName: characterName ?? "Default")
         }
     }
 }

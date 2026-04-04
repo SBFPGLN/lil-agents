@@ -321,7 +321,7 @@ class WalkerCharacter {
         hideBubble()
 
         if session == nil {
-            let newSession = provider.createSession()
+            let newSession = provider.createSession(characterName: name)
             session = newSession
             wireSession(newSession)
             newSession.start()
@@ -515,7 +515,7 @@ class WalkerCharacter {
         hideBubble()
         terminalView?.resetState()
         terminalView?.showSessionMessage()
-        let newSession = provider.createSession()
+        let newSession = provider.createSession(characterName: name)
         session = newSession
         wireSession(newSession)
         newSession.start()
@@ -572,6 +572,12 @@ class WalkerCharacter {
             }
             menu.addItem(item)
         }
+        // Add OpenClaw config item
+        menu.addItem(NSMenuItem.separator())
+        let configItem = NSMenuItem(title: "Configure OpenClaw...", action: #selector(openClawConfigSelected(_:)), keyEquivalent: "")
+        configItem.target = self
+        configItem.attributedTitle = NSAttributedString(string: "Configure OpenClaw...", attributes: [.font: menuFont])
+        menu.addItem(configItem)
         // Show menu below the title bar area
         if let titleBar = popoverWindow?.contentView?.subviews.first(where: { $0.frame.origin.y > 0 && $0.frame.height == 28 }) {
             menu.popUp(positioning: nil, at: NSPoint(x: 10, y: 0), in: titleBar)
@@ -592,6 +598,15 @@ class WalkerCharacter {
         thinkingBubbleWindow?.orderOut(nil)
         thinkingBubbleWindow = nil
         openPopover()
+    }
+
+    @objc func openClawConfigSelected(_ sender: Any) {
+        OpenClawConfig.showConfigDialog(for: name, in: popoverWindow) { [weak self] in
+            // If OpenClaw is the current provider, restart session with new config
+            if self?.provider == .openclaw {
+                self?.resetSession()
+            }
+        }
     }
 
     @objc func copyLastResponseFromButton() {
